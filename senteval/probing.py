@@ -19,6 +19,7 @@ import numpy as np
 
 from senteval.tools.validation import SplitClassifier
 
+from collections import Counter
 
 class PROBINGEval(object):
     def __init__(self, task, task_path, seed=1111):
@@ -29,7 +30,7 @@ class PROBINGEval(object):
                           'dev': {'X': [], 'y': []},
                           'test': {'X': [], 'y': []}}
         self.loadFile(task_path)
-        print('Loaded %s train - %s dev - %s test for %s' %
+        logging.info('Loaded %s train - %s dev - %s test for %s' %
                      (len(self.task_data['train']['y']), len(self.task_data['dev']['y']),
                       len(self.task_data['test']['y']), self.task))
 
@@ -54,10 +55,35 @@ class PROBINGEval(object):
             for i, y in enumerate(self.task_data[split]['y']):
                 self.task_data[split]['y'][i] = self.tok2label[y]
 
+    def reduce_data_size(self, number):
+        # Make reduced dataset balanced
+        counter = Counter(self.task_data['train']['y'])
+        data_per_label = number / len(counter)
+        for x in counter:
+          counter[x] = data_per_label
+        new_inputs = []
+        new_labels = []
+
+        for i in range(len(self.task_data['train']['y'])):
+            label = self.task_data['train']['y'][i]
+            if counter[label] > 0:
+                new_inputs.append(self.task_data['train']['X'][i])
+                new_labels.append(label)
+                counter[label] -= 1
+
+        counter = Counter(new_labels)
+        logging.debug(counter)
+        self.task_data['train']['X'] = new_inputs
+        self.task_data['train']['y'] = new_labels
+
     def run(self, params, batcher):
+        if not params['ntrain'] is None:
+            # Reduce training set size
+            self.reduce_data_size(params['ntrain'])
+
         task_embed = {'train': {}, 'dev': {}, 'test': {}}
         bsize = params.batch_size
-        print('Computing embeddings for train/dev/test')
+        logging.info('Computing embeddings for train/dev/test')
         for key in self.task_data:
             # Sort to reduce padding
             sorted_data = sorted(zip(self.task_data[key]['X'],
@@ -72,7 +98,7 @@ class PROBINGEval(object):
                 task_embed[key]['X'].append(embeddings)
             task_embed[key]['X'] = np.vstack(task_embed[key]['X'])
             task_embed[key]['y'] = np.array(self.task_data[key]['y'])
-        print('Computed embeddings')
+        logging.info('Computed embeddings')
 
         config_classifier = {'nclasses': self.nclasses, 'seed': self.seed,
                              'usepytorch': params.usepytorch,
@@ -98,6 +124,27 @@ class PROBINGEval(object):
                 'ndev': len(task_embed['dev']['X']),
                 'ntest': len(task_embed['test']['X'])}
 
+
+"""
+Additional tasks
+"""
+class VoiceEval(PROBINGEval):
+    def __init__(self, task_path, seed=1111):
+        task_path = os.path.join(task_path, 'voice.txt')
+        # labels: bins
+        PROBINGEval.__init__(self, 'Voice', task_path, seed)
+
+class SubjVerbAgreementEval(PROBINGEval):
+    def __init__(self, task_path, seed=1111):
+        task_path = os.path.join(task_path, 'sv_agree.txt')
+        # labels: bins
+        PROBINGEval.__init__(self, 'SubjVerbAgreement', task_path, seed)
+
+class SubjVerbDistanceEval(PROBINGEval):
+    def __init__(self, task_path, seed=1111):
+        task_path = os.path.join(task_path, 'sv_dist.txt')
+        # labels: bins
+        PROBINGEval.__init__(self, 'SubjVerbDistance', task_path, seed)
 """
 Surface Information
 """

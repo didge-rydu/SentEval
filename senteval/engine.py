@@ -51,7 +51,7 @@ class SE(object):
                            'STS14', 'STS15', 'STS16',
                            'Length', 'WordContent', 'Depth', 'TopConstituents',
                            'BigramShift', 'Tense', 'SubjNumber', 'ObjNumber',
-                           'OddManOut', 'CoordinationInversion']
+                           'OddManOut', 'CoordinationInversion', 'Voice', 'SubjVerbAgreement','SubjVerbDistance']
 
     def eval(self, name):
         # evaluate on evaluation [name], either takes string or list of strings
@@ -114,6 +114,14 @@ class SE(object):
                 self.evaluation = OddManOutEval(tpath + '/probing', seed=self.params.seed)
         elif name == 'CoordinationInversion':
                 self.evaluation = CoordinationInversionEval(tpath + '/probing', seed=self.params.seed)
+
+        # Additional probing tasks
+        elif name == 'Voice':
+                self.evaluation = VoiceEval(tpath + '/probing', seed=self.params.seed)
+        elif name == 'SubjVerbAgreement':
+                self.evaluation = SubjVerbAgreementEval(tpath + '/probing', seed=self.params.seed)
+        elif name == 'SubjVerbDistance':
+                self.evaluation = SubjVerbDistanceEval(tpath + '/probing', seed=self.params.seed)
 
         self.params.current_task = name
         self.evaluation.do_prepare(self.params, self.prepare)
