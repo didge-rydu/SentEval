@@ -29,7 +29,7 @@ class PROBINGEval(object):
                           'dev': {'X': [], 'y': []},
                           'test': {'X': [], 'y': []}}
         self.loadFile(task_path)
-        logging.info('Loaded %s train - %s dev - %s test for %s' %
+        print('Loaded %s train - %s dev - %s test for %s' %
                      (len(self.task_data['train']['y']), len(self.task_data['dev']['y']),
                       len(self.task_data['test']['y']), self.task))
 
@@ -57,7 +57,7 @@ class PROBINGEval(object):
     def run(self, params, batcher):
         task_embed = {'train': {}, 'dev': {}, 'test': {}}
         bsize = params.batch_size
-        logging.info('Computing embeddings for train/dev/test')
+        print('Computing embeddings for train/dev/test')
         for key in self.task_data:
             # Sort to reduce padding
             sorted_data = sorted(zip(self.task_data[key]['X'],
@@ -72,7 +72,7 @@ class PROBINGEval(object):
                 task_embed[key]['X'].append(embeddings)
             task_embed[key]['X'] = np.vstack(task_embed[key]['X'])
             task_embed[key]['y'] = np.array(self.task_data[key]['y'])
-        logging.info('Computed embeddings')
+        print('Computed embeddings')
 
         config_classifier = {'nclasses': self.nclasses, 'seed': self.seed,
                              'usepytorch': params.usepytorch,
