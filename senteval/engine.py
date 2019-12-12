@@ -37,7 +37,7 @@ class SE(object):
         if 'classifier' not in params or not params['classifier']:
             params.classifier = {'nhid': 0}
 
-        assert 'nhid' in params.classifier, 'Set number of hidden units in classifier config!!'
+        #assert 'nhid' in params.classifier, 'Set number of hidden units in classifier config!!'
 
         self.params = params
 

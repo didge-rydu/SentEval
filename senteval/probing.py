@@ -104,10 +104,10 @@ class PROBINGEval(object):
                              'usepytorch': params.usepytorch,
                              'classifier': params.classifier}
 
-        if self.task == "WordContent" and params.classifier['nhid'] > 0:
-            config_classifier = copy.deepcopy(config_classifier)
-            config_classifier['classifier']['nhid'] = 0
-            print(params.classifier['nhid'])
+        #if self.task == "WordContent" and params.classifier['nhid'] > 0:
+        #    config_classifier = copy.deepcopy(config_classifier)
+        #    config_classifier['classifier']['nhid'] = 0
+        #    print(params.classifier['nhid'])
 
         clf = SplitClassifier(X={'train': task_embed['train']['X'],
                                  'valid': task_embed['dev']['X'],

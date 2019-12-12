@@ -21,7 +21,7 @@ from torch import nn
 import torch.nn.functional as F
 
 from sklearn.naive_bayes import GaussianNB
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import RandomForestClassifier as RF
 from sklearn.metrics import accuracy_score
 
 class NaiveBayesClassifier(object):
@@ -32,20 +32,20 @@ class NaiveBayesClassifier(object):
         self.clf.fit(X,y)
 
     def score(self,devX, devy):
-        return accuracy_score(devy, model.predict(devX)) * 100
+        return accuracy_score(devy, self.clf.predict(devX)) * 100
 
 class RandomForestClassifier(object):
     def __init__(self, config, random_state):
         n_estimators = config['n_estimators']
         max_depth = config['max_depth']
-        self.clf = RandomForestClassifier(n_estimators=n_estimators, criterion="gini", \
-                max_depth=max_depth, random_state=random_state)
+        self.clf = RF(n_estimators=n_estimators, criterion="gini",\
+              max_depth=max_depth, random_state=random_state)
 
     def fit(self,X,y):
         self.clf.fit(X,y)
 
     def score(self,devX, devy):
-        return accuracy_score(devy, model.predict(devX)) * 100
+        return accuracy_score(devy, self.clf.predict(devX)) * 100
 
 
 class PyTorchClassifier(object):

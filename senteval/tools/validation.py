@@ -27,7 +27,6 @@ from sklearn.model_selection import StratifiedKFold
 
 def get_classif_name(classifier_config, usepytorch):
     if classifier_config['classifier'] in ['RF', 'NB']:
-        assert classifier_config['usepytorch'], False, 'Cannot use pytorch with RF or NB'
         modelname = classifier_config['classifier']
     elif not usepytorch:
         modelname = 'sklearn-LogReg'
@@ -205,6 +204,7 @@ class SplitClassifier(object):
     def run(self):
         logging.info('Training {0} with standard validation..'
                      .format(self.modelname))
+        print(self.classifier_config['classifier'])
         if not self.classifier_config['classifier'] in ['RF','NB']:
             regs = [10**t for t in range(-5, -1)] if self.usepytorch else \
                    [2**t for t in range(-2, 4, 1)]
@@ -221,8 +221,7 @@ class SplitClassifier(object):
                     clf.fit(self.X['train'], self.y['train'],
                             validation_data=(self.X['valid'], self.y['valid']))
                 else:
-                    else:
-                        clf = LogisticRegression(C=reg, random_state=self.seed)
+                    clf = LogisticRegression(C=reg, random_state=self.seed)
                     clf.fit(self.X['train'], self.y['train'])
                 scores.append(round(100*clf.score(self.X['valid'],
                                     self.y['valid']), 2))
@@ -245,12 +244,14 @@ class SplitClassifier(object):
         else:
             if self.classifier_config['classifier'] == 'RF':
                 clf = RandomForestClassifier(self.classifier_config, random_state=self.seed)
-            if self.classifier_config['classifier'] == 'NB':
+            elif self.classifier_config['classifier'] == 'NB':
                 clf = NaiveBayesClassifier()
             else:
                 clf = LogisticRegression(C=optreg, random_state=self.seed)
             clf.fit(self.X['train'], self.y['train'])
 
+        if self.classifier_config['classifier'] in ['RF', 'NB']:
+            devaccuracy = clf.score(self.X['valid'], self.y['valid'])
         testaccuracy = clf.score(self.X['test'], self.y['test'])
         testaccuracy = round(100*testaccuracy, 2)
         return devaccuracy, testaccuracy
