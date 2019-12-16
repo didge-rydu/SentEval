@@ -55,50 +55,56 @@ class PROBINGEval(object):
             for i, y in enumerate(self.task_data[split]['y']):
                 self.task_data[split]['y'][i] = self.tok2label[y]
 
-    def reduce_data_size(self, number):
+    def reduce_data_size(self, number, data):
         # Make reduced dataset balanced
-        counter = Counter(self.task_data['train']['y'])
+        counter = Counter(data['train']['y'])
         data_per_label = number / len(counter)
         for x in counter:
           counter[x] = data_per_label
         new_inputs = []
         new_labels = []
 
-        for i in range(len(self.task_data['train']['y'])):
-            label = self.task_data['train']['y'][i]
+        for i in range(len(data['train']['y'])):
+            label = data['train']['y'][i]
             if counter[label] > 0:
-                new_inputs.append(self.task_data['train']['X'][i])
+                new_inputs.append(data['train']['X'][i])
                 new_labels.append(label)
                 counter[label] -= 1
 
         counter = Counter(new_labels)
         logging.debug(counter)
-        self.task_data['train']['X'] = new_inputs
-        self.task_data['train']['y'] = new_labels
+        data['train']['X'] = np.vstack(new_inputs)
+        data['train']['y'] = np.array(new_labels)
 
-    def run(self, params, batcher):
+    def run(self, params, batcher, task_embed=None):
+        #if not params['ntrain'] is None:
+        #    # Reduce training set size
+        #    self.reduce_data_size(params['ntrain'])
+
+        bsize = params.batch_size
+        if task_embed is None:
+            logging.info('Computing embeddings for train/dev/test')
+            task_embed = {'train': {}, 'dev': {}, 'test': {}}
+            for key in self.task_data:
+                # Sort to reduce padding
+                sorted_data = sorted(zip(self.task_data[key]['X'],
+                                         self.task_data[key]['y']),
+                                     key=lambda z: (len(z[0]), z[1]))
+                self.task_data[key]['X'], self.task_data[key]['y'] = map(list, zip(*sorted_data))
+    
+                task_embed[key]['X'] = []
+                for ii in range(0, len(self.task_data[key]['y']), bsize):
+                    batch = self.task_data[key]['X'][ii:ii + bsize]
+                    embeddings = batcher(params, batch)
+                    task_embed[key]['X'].append(embeddings)
+                task_embed[key]['X'] = np.vstack(task_embed[key]['X'])
+                task_embed[key]['y'] = np.array(self.task_data[key]['y'])
+            logging.info('Computed embeddings')
+        self.task_embed = task_embed
+        
         if not params['ntrain'] is None:
             # Reduce training set size
-            self.reduce_data_size(params['ntrain'])
-
-        task_embed = {'train': {}, 'dev': {}, 'test': {}}
-        bsize = params.batch_size
-        logging.info('Computing embeddings for train/dev/test')
-        for key in self.task_data:
-            # Sort to reduce padding
-            sorted_data = sorted(zip(self.task_data[key]['X'],
-                                     self.task_data[key]['y']),
-                                 key=lambda z: (len(z[0]), z[1]))
-            self.task_data[key]['X'], self.task_data[key]['y'] = map(list, zip(*sorted_data))
-
-            task_embed[key]['X'] = []
-            for ii in range(0, len(self.task_data[key]['y']), bsize):
-                batch = self.task_data[key]['X'][ii:ii + bsize]
-                embeddings = batcher(params, batch)
-                task_embed[key]['X'].append(embeddings)
-            task_embed[key]['X'] = np.vstack(task_embed[key]['X'])
-            task_embed[key]['y'] = np.array(self.task_data[key]['y'])
-        logging.info('Computed embeddings')
+            self.reduce_data_size(params['ntrain'], task_embed)
 
         config_classifier = {'nclasses': self.nclasses, 'seed': self.seed,
                              'usepytorch': params.usepytorch,
