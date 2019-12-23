@@ -19,8 +19,6 @@ import numpy as np
 
 from senteval.tools.validation import SplitClassifier
 
-from collections import Counter
-
 class PROBINGEval(object):
     def __init__(self, task, task_path, seed=1111):
         self.seed = seed
@@ -55,32 +53,7 @@ class PROBINGEval(object):
             for i, y in enumerate(self.task_data[split]['y']):
                 self.task_data[split]['y'][i] = self.tok2label[y]
 
-    def reduce_data_size(self, number, data):
-        # Make reduced dataset balanced
-        counter = Counter(data['train']['y'])
-        data_per_label = number / len(counter)
-        for x in counter:
-          counter[x] = data_per_label
-        new_inputs = []
-        new_labels = []
-
-        for i in range(len(data['train']['y'])):
-            label = data['train']['y'][i]
-            if counter[label] > 0:
-                new_inputs.append(data['train']['X'][i])
-                new_labels.append(label)
-                counter[label] -= 1
-
-        counter = Counter(new_labels)
-        logging.debug(counter)
-        data['train']['X'] = np.vstack(new_inputs)
-        data['train']['y'] = np.array(new_labels)
-
     def run(self, params, batcher, task_embed=None):
-        #if not params['ntrain'] is None:
-        #    # Reduce training set size
-        #    self.reduce_data_size(params['ntrain'])
-
         bsize = params.batch_size
         if task_embed is None:
             logging.info('Computing embeddings for train/dev/test')
@@ -102,9 +75,6 @@ class PROBINGEval(object):
             logging.info('Computed embeddings')
         self.task_embed = task_embed
         
-        if not params['ntrain'] is None:
-            # Reduce training set size
-            self.reduce_data_size(params['ntrain'], task_embed)
 
         config_classifier = {'nclasses': self.nclasses, 'seed': self.seed,
                              'usepytorch': params.usepytorch,

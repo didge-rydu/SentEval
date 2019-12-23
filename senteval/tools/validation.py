@@ -24,6 +24,30 @@ assert(sklearn.__version__ >= "0.18.0"), \
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import StratifiedKFold
 
+from collections import Counter
+
+def reduce_data_size(number, X, y):
+    # Make reduced dataset balanced
+    counter = Counter(y)
+    data_per_label = number // len(counter)
+    for x in counter:
+      counter[x] = data_per_label
+    new_inputs = []
+    new_labels = []
+
+    print(y)
+
+    for i in range(len(y)):
+        label = y[i]
+        if counter[label] > 0:
+            new_inputs.append(X[i])
+            new_labels.append(label)
+            counter[label] -= 1
+
+    counter = Counter(new_labels)
+    logging.debug(counter)
+    return np.vstack(new_inputs), np.array(new_labels)
+
 
 def get_classif_name(classifier_config, usepytorch):
     if classifier_config['classifier'] in ['RF', 'NB']:
@@ -43,8 +67,7 @@ class InnerKFoldClassifier(object):
     (train) split classifier : InnerKfold.
     """
     def __init__(self, X, y, config):
-        self.X = X
-        self.y = y
+        self.X, self.y = reduce_data_size(config['classifier']['ntrain'],X,y)
         self.featdim = X.shape[1]
         self.nclasses = config['nclasses']
         self.seed = config['seed']
@@ -114,6 +137,7 @@ class KFoldClassifier(object):
     (train, test) split classifier : cross-validation on train.
     """
     def __init__(self, train, test, config):
+        train['X'], train['y'] = reduce_data_size(config['classifier']['ntrain'],X,y)
         self.train = train
         self.test = test
         self.featdim = self.train['X'].shape[1]
@@ -188,8 +212,8 @@ class SplitClassifier(object):
     (train, valid, test) split classifier.
     """
     def __init__(self, X, y, config):
-        self.X = X
-        self.y = y
+        X['train'], y['train'] = reduce_data_size(config['classifier']['ntrain'],X['train'],y['train'])
+        self.X, self.y = X, y
         self.nclasses = config['nclasses']
         self.featdim = self.X['train'].shape[1]
         self.seed = config['seed']
