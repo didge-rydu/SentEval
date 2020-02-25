@@ -99,7 +99,12 @@ class SICKRelatednessEval(object):
         testF = np.c_[np.abs(testA - testB), testA * testB]
         testY = self.encode_labels(self.sick_data['test']['y'])
 
-        config = {'seed': self.seed, 'nclasses': 5}
+        config = {
+            'seed': self.seed,
+            'nclasses': 5,
+            'classifier': params['classifier']
+            }
+
         clf = RelatednessPytorch(train={'X': trainF, 'y': trainY},
                                  valid={'X': devF, 'y': devY},
                                  test={'X': testF, 'y': testY},

@@ -31,21 +31,27 @@ class NaiveBayesClassifier(object):
     def fit(self,X,y):
         self.clf.fit(X,y)
 
+    def predict(self,X):
+        return self.clf.predict(X)
+
     def score(self,devX, devy):
-        return accuracy_score(devy, self.clf.predict(devX)) * 100
+        return accuracy_score(devy, self.clf.predict(devX))
 
 class RandomForestClassifier(object):
     def __init__(self, config, random_state):
         n_estimators = config['n_estimators']
         max_depth = config['max_depth']
         self.clf = RF(n_estimators=n_estimators, criterion="gini",\
-              max_depth=max_depth, random_state=random_state)
+              max_depth=max_depth, random_state=random_state, n_jobs=3)
+
+    def predict(self,X):
+        return self.clf.predict(X)
 
     def fit(self,X,y):
         self.clf.fit(X,y)
 
     def score(self,devX, devy):
-        return accuracy_score(devy, self.clf.predict(devX)) * 100
+        return accuracy_score(devy, self.clf.predict(devX))
 
 
 class PyTorchClassifier(object):
@@ -85,7 +91,12 @@ class PyTorchClassifier(object):
         return trainX, trainy, devX, devy
 
     def fit(self, X, y, validation_data=None, validation_split=None,
-            early_stop=True):
+            early_stop=True, validation_fn=None):
+
+        if validation_fn is None:
+          # Hack to set default parameter
+          validation_fn = self.score
+
         self.nepoch = 0
         bestaccuracy = -1
         stop_train = False
@@ -98,7 +109,7 @@ class PyTorchClassifier(object):
         # Training
         while not stop_train and self.nepoch <= self.max_epoch:
             self.trainepoch(trainX, trainy, epoch_size=self.epoch_size)
-            accuracy = self.score(devX, devy)
+            accuracy = validation_fn(devX, devy)
             if accuracy > bestaccuracy:
                 bestaccuracy = accuracy
                 bestmodel = copy.deepcopy(self.model)

@@ -23,14 +23,23 @@ except ImportError:
 from senteval.tools.ranking import ImageSentenceRankingPytorch
 
 
+def reduce_data_size(data, size):
+    if isinstance(size, float):
+        # Data set size in percent
+        size = int(len(data['train']['sent']) * size)
+    data['train']['sent'] = data['train']['sent'][:size]
+    data['train']['imgfeat'] = data['train']['imgfeat'][:size]
+        
+
 class ImageCaptionRetrievalEval(object):
-    def __init__(self, task_path, seed=1111):
+    def __init__(self, task_path, seed=1111, ntrain=None):
         logging.debug('***** Transfer task: Image Caption Retrieval *****\n\n')
 
         # Get captions and image features
         self.seed = seed
         train, dev, test = self.loadFile(task_path)
         self.coco_data = {'train': train, 'dev': dev, 'test': test}
+        reduce_data_size(self.coco_data, ntrain)
 
     def do_prepare(self, params, prepare):
         samples = self.coco_data['train']['sent'] + \

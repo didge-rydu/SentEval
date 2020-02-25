@@ -24,7 +24,7 @@ from senteval.sick import SICKRelatednessEval
 
 
 class STSEval(object):
-    def loadFile(self, fpath):
+    def loadFile(self, fpath, size):
         self.data = {}
         self.samples = []
 
@@ -44,6 +44,14 @@ class STSEval(object):
             # sort data by length to minimize padding in batcher
             sorted_data = sorted(zip(sent1, sent2, gs_scores),
                                  key=lambda z: (len(z[0]), len(z[1]), z[2]))
+          
+            # Reduce dataset size
+            # TODO: Balancedness?
+            if isinstance(size, float):
+                # Dataset size in percent
+                size = int(len(sorted_data) * size)
+            sorted_data = sorted_data[:size]
+
             sent1, sent2, gs_scores = map(list, zip(*sorted_data))
 
             self.data[dataset] = (sent1, sent2, gs_scores)
@@ -105,48 +113,48 @@ class STSEval(object):
 
 
 class STS12Eval(STSEval):
-    def __init__(self, taskpath, seed=1111):
+    def __init__(self, taskpath, size ,seed=1111):
         logging.debug('***** Transfer task : STS12 *****\n\n')
         self.seed = seed
         self.datasets = ['MSRpar', 'MSRvid', 'SMTeuroparl',
                          'surprise.OnWN', 'surprise.SMTnews']
-        self.loadFile(taskpath)
+        self.loadFile(taskpath, size)
 
 
 class STS13Eval(STSEval):
     # STS13 here does not contain the "SMT" subtask due to LICENSE issue
-    def __init__(self, taskpath, seed=1111):
+    def __init__(self, taskpath, size ,seed=1111):
         logging.debug('***** Transfer task : STS13 (-SMT) *****\n\n')
         self.seed = seed
         self.datasets = ['FNWN', 'headlines', 'OnWN']
-        self.loadFile(taskpath)
+        self.loadFile(taskpath, size)
 
 
 class STS14Eval(STSEval):
-    def __init__(self, taskpath, seed=1111):
+    def __init__(self, taskpath, size ,seed=1111):
         logging.debug('***** Transfer task : STS14 *****\n\n')
         self.seed = seed
         self.datasets = ['deft-forum', 'deft-news', 'headlines',
                          'images', 'OnWN', 'tweet-news']
-        self.loadFile(taskpath)
+        self.loadFile(taskpath, size)
 
 
 class STS15Eval(STSEval):
-    def __init__(self, taskpath, seed=1111):
+    def __init__(self, taskpath, size, seed=1111):
         logging.debug('***** Transfer task : STS15 *****\n\n')
         self.seed = seed
         self.datasets = ['answers-forums', 'answers-students',
                          'belief', 'headlines', 'images']
-        self.loadFile(taskpath)
+        self.loadFile(taskpath, size)
 
 
 class STS16Eval(STSEval):
-    def __init__(self, taskpath, seed=1111):
+    def __init__(self, taskpath, size,seed=1111):
         logging.debug('***** Transfer task : STS16 *****\n\n')
         self.seed = seed
         self.datasets = ['answer-answer', 'headlines', 'plagiarism',
                          'postediting', 'question-question']
-        self.loadFile(taskpath)
+        self.loadFile(taskpath, size)
 
 
 class STSBenchmarkEval(SICKRelatednessEval):

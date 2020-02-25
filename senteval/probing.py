@@ -17,7 +17,9 @@ import copy
 import logging
 import numpy as np
 
-from senteval.tools.validation import SplitClassifier
+from collections import Counter
+
+from senteval.tools.validation import SplitClassifier, InnerKFoldClassifier
 
 class PROBINGEval(object):
     def __init__(self, task, task_path, seed=1111):
@@ -45,9 +47,12 @@ class PROBINGEval(object):
                 self.task_data[self.tok2split[line[0]]]['X'].append(line[-1].split())
                 self.task_data[self.tok2split[line[0]]]['y'].append(line[1])
 
-        labels = sorted(np.unique(self.task_data['train']['y']))
+        labels = np.unique(np.array(sorted(list(self.task_data['train']['y']) +\
+            list(self.task_data['dev']['y']) +\
+            list(self.task_data['test']['y']))))
         self.tok2label = dict(zip(labels, range(len(labels))))
         self.nclasses = len(self.tok2label)
+        print(self.tok2label)
 
         for split in self.task_data:
             for i, y in enumerate(self.task_data[split]['y']):
@@ -74,8 +79,7 @@ class PROBINGEval(object):
                 task_embed[key]['y'] = np.array(self.task_data[key]['y'])
             logging.info('Computed embeddings')
         self.task_embed = task_embed
-        
-
+       
         config_classifier = {'nclasses': self.nclasses, 'seed': self.seed,
                              'usepytorch': params.usepytorch,
                              'classifier': params.classifier}
@@ -85,6 +89,16 @@ class PROBINGEval(object):
         #    config_classifier['classifier']['nhid'] = 0
         #    print(params.classifier['nhid'])
 
+        #if not params.lang == 'en':
+        #  # Use KFold strategy for languages other than english, since the datasets are much smaller and less balanced
+        #  clf = InnerKFoldClassifier(X=np.vstack([task_embed['train']['X'], task_embed['dev']['X'], task_embed['test']['X']]),
+        #                             y=np.array(list(task_embed['train']['y']) + list(task_embed['dev']['y']) + list(task_embed['test']['y'])),
+        #                             config=config_classifier)
+
+        # Return F1 and use F1 as stopping criterion for unbalanced experiments
+        return_f1 = not params.balance is None and len(params.balance) > 0
+
+        #else:
         clf = SplitClassifier(X={'train': task_embed['train']['X'],
                                  'valid': task_embed['dev']['X'],
                                  'test': task_embed['test']['X']},
@@ -93,13 +107,32 @@ class PROBINGEval(object):
                                  'test': task_embed['test']['y']},
                               config=config_classifier)
 
-        devacc, testacc = clf.run()
-        logging.debug('\nDev acc : %.1f Test acc : %.1f for %s classification\n' % (devacc, testacc, self.task.upper()))
+        raw_results = clf.run(return_f1=return_f1)
+        logging.debug('\nDev acc : %.1f Test acc : %.1f for %s classification\n' % (*raw_results[:2], self.task.upper()))
 
-        return {'devacc': devacc, 'acc': testacc,
+        results = {'devacc': devacc, 'acc': testacc,
                 'ndev': len(task_embed['dev']['X']),
                 'ntest': len(task_embed['test']['X'])}
 
+        if return_f1:
+          results['f1'] = raw_results[3]
+          logging.debug('\nTest F1 : %.1f for %s classification\n' % (raw_results[3], self.task.upper()))
+
+        return results
+
+
+class MTREC(PROBINGEval):
+    def __init__(self, task_path, seed=1111):
+        task_path = os.path.join(task_path, 'trec.txt')
+        # labels: bins
+        PROBINGEval.__init__(self, 'TREC', task_path, seed)
+
+
+class MSenti(PROBINGEval):
+    def __init__(self, task_path, seed=1111):
+        task_path = os.path.join(task_path, 'sentiment.txt')
+        # labels: bins
+        PROBINGEval.__init__(self, 'SentimentAnalysis', task_path, seed)
 
 """
 Additional tasks

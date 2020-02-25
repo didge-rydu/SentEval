@@ -13,12 +13,41 @@ from __future__ import absolute_import, division, unicode_literals
 import copy
 import numpy as np
 
+import logging
+
 import torch
 from torch import nn
 import torch.optim as optim
 
 from scipy.stats import pearsonr
 
+from collections import Counter
+from random import shuffle
+
+def reduce_data_size(number, X, y, balance=None):
+    if isinstance(number, float):
+      # Size is given in percent
+      number = int(len(y) * number)
+
+    new_inputs = []
+    new_labels = []
+
+    shuffled_indices = list(range(len(y)))
+    shuffle(shuffled_indices)
+
+    # Labels are on ordinal scale -> hard to balance -> draw from original distribution
+    for i in shuffled_indices[:number]:
+      new_inputs.append(X[i])
+      new_labels.append(y[i])
+
+    # Log label distribution
+    if len(y.shape) == 2:
+      counter = Counter([tuple(x) for x in new_labels])
+    else:
+      counter = Counter(new_labels)
+
+    logging.debug(counter)
+    return np.vstack(new_inputs), np.array(new_labels)
 
 class RelatednessPytorch(object):
     # Can be used for SICK-Relatedness, and STS14
@@ -28,6 +57,8 @@ class RelatednessPytorch(object):
         torch.manual_seed(config['seed'])
         assert torch.cuda.is_available(), 'torch.cuda required for Relatedness'
         torch.cuda.manual_seed(config['seed'])
+
+        train['X'], train['y'] = reduce_data_size(config['classifier']['ntrain'], train['X'], train['y'])
 
         self.train = train
         self.valid = valid
